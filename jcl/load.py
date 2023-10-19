@@ -88,13 +88,14 @@ def slice_spike_times(spike_times, begin_ts, end_ts):
     return [st[__get_inds(st, begin_ts, end_ts)] if len(st) > 0 else st for st in spike_times]
 
 
-def bins_from_spike_times(spike_times, bin_len=25.6, sampling_period=0.05, dtype=np.uint16, dense_loading=True, return_mat_type=csc_matrix):
+def bins_from_spike_times(spike_times, position_range, bin_len=480, sampling_period=1/480, dtype=np.uint16, dense_loading=True, return_mat_type=np.array):
     """ Bin given spike times, each bin contains total number of spikes.
 
         Args:
             spike_times - list of spike times per neuron (list of iterables, pre-sorted in a non-descending order)
-            bin_len - length of a bin in ms (default 1s/39.0625 = 25.6ms)
-            sampling_period - sampling period in ms (default 1s/20kHz = 0.05ms)
+            position_range - tuple or list with first position timestamp and last position time stamp
+            bin_len - length of a bin in ms (default 1s/50 = 20ms)
+            sampling_period - sampling period in ms (default 1s/24kHz)
             dtype - dtype to use for bins, default np.uint16 (np.uint8 would use less memory, but can store only up to 256 spikes per bin)
             dense_loading - if True (default) load data into a dense np.ndarray then convert to a `return_mat_type` (fast), if False load into a sparse matrix (slow, but memory efficient)
             return_mat_type - type of matrix to be returned (default is sparse `csc_matrix` for efficient storage and relatively fast column slicing)
@@ -104,7 +105,7 @@ def bins_from_spike_times(spike_times, bin_len=25.6, sampling_period=0.05, dtype
     # leave this two lines here in case we find non-sorted spikes (.res files)
     # maxes = [np.max(st) if len(st) > 0 else 0 for st in spike_times]
     # last_spike_time = to_ms(np.max(maxes), sampling_period)  # in ms
-    bin_edges, bin_num = compute_bins(spike_times, bin_len, sampling_period)
+    bin_edges, bin_num = compute_bins(position_range, bin_len, sampling_period)
 
     if dense_loading:
         # fastest loading (due to indexing), but requires a lot of memory
@@ -112,10 +113,10 @@ def bins_from_spike_times(spike_times, bin_len=25.6, sampling_period=0.05, dtype
     else:
         # lil_matrix is fast for loading rows, convert later to return_mat_type
         binned_data = lil_matrix((len(spike_times), bin_num), dtype=np.uint16)
-
+#     print((bin_edges.shape), binned_data.shape)
     for n, st in enumerate(spike_times):
-        st_ms = to_ms(np.array(st), sampling_period)
-        hist = np.histogram(st_ms, bins=bin_edges)[0]
+#         st_ms = to_ms(np.array(st), sampling_period)
+        hist = np.histogram(st, bins=bin_edges)[0]
         binned_data[n] = hist
 
     return return_mat_type(binned_data)
