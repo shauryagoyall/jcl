@@ -87,6 +87,8 @@ class OccupancyMap(Map):
         occupancy = np.zeros(binner.num_bins)
 
         for p in positions:
+            if (p[0] ==0) and (p[1]==0) :
+                continue
             bin_idx = binner.bin_idx(p)
             occupancy[bin_idx] += bin_len
 
