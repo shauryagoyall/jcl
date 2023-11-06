@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.signal import savgol_filter
 
 
 def align_measured_data(population_vectors, positions, num_bins, speed=None):
@@ -100,21 +101,42 @@ def calc_speed(positions, bin_len):
     return [speed[0]] + speed
 
 
-def speed_filter(positions, bin_len, speed_thr):
+def speed_filter(positions, bin_len, speed_thr, speed_violation = 90):
     """ Filter positions based on speed.
         Return both parts where speed > speed_thr and where speed <= speed_thr.
 
             positions - array of positions of shape (n,1) or (n,2)
             bin_len - duration of temporal bins in ms
             speed_thr - threshold for speed
+            speed_violation - speed in cm/s that is max achievable by rat
         Return:
-            (high_speed_positions, low_speed_positions)
+            positions speed filtered with low speed set to 0, low speed position indices
     """
     assert speed_thr is not None
-    speed = np.array(calc_speed(positions, bin_len))
-    speed_h_idx = speed > speed_thr
-    speed_l_idx = speed <= speed_thr
-    return positions[speed_h_idx], positions[speed_l_idx]
+    
+    window_size = 50
+    poly_degree = 1
+    # Apply the Savitzky-Golay filter
+    smooth_pos = position.copy()
+    smooth_pos[:,0] = savgol_filter(position[:,0], window_size, poly_degree)
+    smooth_pos[:,1] = savgol_filter(position[:,1], window_size, poly_degree)
+    
+    speed = np.array( calc_speed(smooth_pos,bin_len) )
+    
+    speed_violation_index = np.where(speed > speed_violation)[0]
+    for i in speed_violation_index:
+        speed[i]= np.mean(speed[i-10:i])
+        
+    # Window size and polynomial degree for the Savitzky-Golay filter
+    window_size = 50
+    poly_degree = 1
+    # Apply the Savitzky-Golay filter
+    smooth_speed = savgol_filter(speed, window_size, poly_degree)
+    speed_l_idx = smooth_speed < speed_thr
+    
+    speed_filtered_positions = smooth_pos.copy()
+    speed_filtered_positions[speed_l_idx] = [0,0]
+    return speed_filtered_positions, speed_l_idx, smooth_speed,speed, smooth_pos
 
 
 def get_last_spike_time(spike_times):
