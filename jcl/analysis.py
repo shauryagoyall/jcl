@@ -96,8 +96,6 @@ class OccupancyMap(Map):
 
         return occupancy / 1000  # ms to seconds
 
-
-
 class FiringRateMap(Map):
     def __init__(self, spike_train, positions, maze_size, bin_size, bin_len, smooth_sd=3):
         """ Produce firing rate map for the given single cell spike train.
@@ -109,7 +107,7 @@ class FiringRateMap(Map):
                 bin_len - duration of temporal bins in ms
                 smooth_sd - SD in bins for gaussian smoothing
             """
-        __fr_map, __occupancy = self.__compute_frm(spike_train, positions, maze_size, bin_size, bin_len, smooth_sd=3, return_occupancy=True)
+        __fr_map, __occupancy = self.__compute_frm(spike_train, positions, maze_size, bin_size, bin_len, smooth_sd)
         super().__init__(__fr_map)
         self.__occupancy = __occupancy
         self.bin_size = bin_size
@@ -123,75 +121,14 @@ class FiringRateMap(Map):
     def occupancy(self):
         """ Occupancy map. """
         return self.__occupancy
-
-    @property
-    def peak_fr(self):
-        """ Peak firing rate in Hz. """
-        if self.__frs is None:
-            self.__frs = self.__compute_frs()
-        return self.__frs[2]
-
+    
     @property
     def mean_fr(self):
         """ Mean firing rate in Hz. """
         if self.__frs is None:
             self.__frs = self.__compute_frs()
         return self.__frs[0]
-
-    @property
-    def I_sec(self):
-        """ Information of the firing rate map in bits/s. """
-        if self.__I_sec is None:
-
-            good = np.logical_and(self.__good_idx(self.map, self.__eps), self.__good_idx(self.__occupancy.map, self.__eps))
-            frm = self.map[good]
-
-            occ = self.__occupancy.map_prob[good]
-
-            self.__I_sec = np.sum(frm * np.log2(frm / self.mean_fr) * occ)
-        return self.__I_sec
-
-
-    @property
-    def I_spike(self):
-        """ Information of the firing rate map in bits/spike. """
-        if self.__I_spike is None:
-            self.__I_spike = self.I_sec / self.mean_fr
-        return self.__I_spike
-
-    @property
-    def sparsity(self):
-        """ Sparsity of the firing rate map. """
-        if self.__sparsity is None:
-            occ_prob = self.__occupancy.map_prob
-            frm_good_idx = self.__good_idx(self.map)
-            occ_good_idx = self.__good_idx(occ_prob)
-            good_idx = np.logical_and(frm_good_idx, occ_good_idx)
-
-            frm = self.map[good_idx]
-            occ = occ_prob[good_idx]
-
-            self.__sparsity = np.sum(frm * occ) ** 2 / np.sum(frm ** 2 * occ)
-        return self.__sparsity
-
-    @cached_property
-    def center(self):
-        if (self.map != 0).sum() == 0:
-            return None
-        return np.squeeze(np.where(self.map == self.peak_fr))
-
-    def correlate(self, other: Map, normalized=False):
-        self_ok = self.__good_idx(self.map) & (self.occupancy.map > 0)
-        other_ok = self.__good_idx(other.map) & (other.occupancy.map > 0)
-        both_ok = (self_ok) & (other_ok)
-        if normalized:
-            sm = self.map_prob[both_ok].flatten()
-            om = other.map_prob[both_ok].flatten()
-        else:
-            sm = self.map[both_ok].flatten()
-            om = other.map[both_ok].flatten()
-        return np.corrcoef(sm, om)[0, 1]
-
+    
     def __compute_frs(self):
         """ Compute mean, median and max firing rates from given firing rate map.
             Ignore nans, infs and values smaller than eps.
@@ -209,7 +146,7 @@ class FiringRateMap(Map):
         return frm.mean(), np.median(frm), frm.max()
 
     @staticmethod
-    def __compute_frm(spike_train, positions, maze_size, bin_size, bin_len, smooth_sd=3, return_occupancy=False):
+    def __compute_frm(spike_train, positions, maze_size, bin_size, bin_len, smooth_sd):
         """ Produce firing rate map for the given single cell spike train.
 
             Args:
@@ -234,7 +171,7 @@ class FiringRateMap(Map):
         frm[np.isnan(frm)] = 0
         frm[np.isinf(frm)] = 0
         frm = gaussian_filter(frm, smooth_sd)
-        return frm, occupancy if return_occupancy else frm
+        return frm, occupancy
 
     @staticmethod
     def __good_idx(m, eps=None):
