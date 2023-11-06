@@ -64,7 +64,6 @@ class Map:
     def size(self):
         return self.__map.size
 
-
 class OccupancyMap(Map):
     def __init__(self, positions, maze_size, bin_size, bin_len, smooth_sd=None):
         """ Produce occupancy map.
@@ -84,18 +83,19 @@ class OccupancyMap(Map):
 
     @staticmethod
     def __compute_occ(positions, binner, bin_len, smooth_sd=None):
-        occupancy = np.zeros(binner.num_bins)
+        occupancy = np.zeros(binner.num_bins, dtype= np.int64)
 
         for p in positions:
-            if (p[0] ==0) and (p[1]==0) :
-                continue
+            
             bin_idx = binner.bin_idx(p)
-            occupancy[bin_idx] += bin_len
-
+            num_bins = binner.num_bins - 1
+            if ( abs( bin_idx[0] - bin_idx[1] )   !=   num_bins[0] ) and ( abs( bin_idx[0] - bin_idx[1] )   !=  0 ):
+                occupancy[bin_idx] += bin_len
         if smooth_sd is not None:
             occupancy = gaussian_filter(occupancy, smooth_sd)
 
         return occupancy / 1000  # ms to seconds
+
 
 
 class FiringRateMap(Map):
