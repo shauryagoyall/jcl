@@ -161,7 +161,7 @@ def get_first_spike_time(spike_times):
     return np.min([st[0] for st in spike_times if len(st) > 0])
 
 
-def compute_bins(position_range, bin_len=480, sampling_period=1/480):
+def compute_bins(position_range, bin_len):
     """ Compute bin edges for given spike times.
 
         Args:
@@ -173,7 +173,7 @@ def compute_bins(position_range, bin_len=480, sampling_period=1/480):
     """
     
     bin_num = np.ceil( (position_range[-1] - position_range[0]) / bin_len).astype(int)
-    bin_edges = np.arange(position_range[0], position_range[-1]+480, bin_len)
+    bin_edges = np.arange(position_range[0], position_range[-1]+bin_len, bin_len)
     
     return bin_edges, bin_num
 
