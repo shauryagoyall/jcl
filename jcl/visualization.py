@@ -8,7 +8,6 @@ from jcl.analysis import Map
 import plotly.express as px
 import plotly.graph_objects as go
 
-
 def plot_map(m: Map, title=None, colorbar_label=None, path=None):
     """ Plot given with added color bar."
 
@@ -40,7 +39,46 @@ def plot_map(m: Map, title=None, colorbar_label=None, path=None):
     else:
         plt.show()
     plt.close()
+    
+def plot_map_with_label(m: Map, start=(a,b), chocolate = (c,d), honey=(e,f), title=None, colorbar_label=None, path=None):
+    """ Plot given with added color bar and marking on start, chocolate and honey"
 
+        Args:
+            m - map
+            title - figure title
+            colorbar_label - label to be used for the colorbar
+            path - file path to which to save the figure, if none show the figure
+    """
+    if m.ndim == 1:
+        im = np.expand_dims(m.map, 1)
+        im = np.repeat(im.map, 3, 1).T
+    else:
+        im = m.map
+        
+    # Create a figure and axis
+    fig, ax = plt.subplots()
+
+    plt.set_cmap("jet")
+    plt.imshow(im)
+
+    # Add the label text in black
+    ax.text(a, b, "Start", fontsize=12, color='white', ha='center', va='center')
+    ax.text(c, d, "Chocolate", fontsize=12, color='white', ha='center', va='center')
+    ax.text(e, f, "Honey", fontsize=12, color='white', ha='center', va='center')
+
+    cb = plt.colorbar(ticks=[0., np.max(im)])
+    if colorbar_label is not None:
+        cb.set_ticklabels([0, np.round(np.max(im))])
+        cb.set_label("Hz", fontsize=18)
+
+    if title is not None:
+        plt.title(title)
+
+    if path is not None:
+        plt.savefig(path)
+    else:
+        plt.show()
+    plt.close()    
 
 def plot_circle(center, radius, color="red", name=None, fig=None):
     """ Plot circle.
