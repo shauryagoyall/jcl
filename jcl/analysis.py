@@ -183,6 +183,59 @@ class FiringRateMap(Map):
             return np.logical_and(good, m >= eps)
         else:
             return good
+    
+    @property
+    def I_sec(self):
+        """ Information of the firing rate map in bits/s. """
+        if self.__I_sec is None:
+
+            good = np.logical_and(self.__good_idx(self.map, self.__eps), self.__good_idx(self.__occupancy.map, self.__eps))
+            frm = self.map[good]
+
+            occ = self.__occupancy.map_prob[good]
+
+            self.__I_sec = np.sum(frm * np.log2(frm / self.mean_fr) * occ)
+        return self.__I_sec
+
+    @property
+    def I_spike(self):
+        """ Information of the firing rate map in bits/spike. """
+        if self.__I_spike is None:
+            self.__I_spike = self.I_sec / self.mean_fr
+        return self.__I_spike
+
+    @property
+    def sparsity(self):
+        """ Sparsity of the firing rate map. """
+        if self.__sparsity is None:
+            occ_prob = self.__occupancy.map_prob
+            frm_good_idx = self.__good_idx(self.map)
+            occ_good_idx = self.__good_idx(occ_prob)
+            good_idx = np.logical_and(frm_good_idx, occ_good_idx)
+
+            frm = self.map[good_idx]
+            occ = occ_prob[good_idx]
+
+            self.__sparsity = np.sum(frm * occ) ** 2 / np.sum(frm ** 2 * occ)
+        return self.__sparsity
+
+    @cached_property
+    def center(self):
+        if (self.map != 0).sum() == 0:
+            return None
+        return np.squeeze(np.where(self.map == self.peak_fr))
+
+    def correlate(self, other: Map, normalized=False):
+        self_ok = self.__good_idx(self.map) & (self.occupancy.map > 0)
+        other_ok = self.__good_idx(other.map) & (other.occupancy.map > 0)
+        both_ok = (self_ok) & (other_ok)
+        if normalized:
+            sm = self.map_prob[both_ok].flatten()
+            om = other.map_prob[both_ok].flatten()
+        else:
+            sm = self.map[both_ok].flatten()
+            om = other.map[both_ok].flatten()
+        return np.corrcoef(sm, om)[0, 1]
 
 
 class PopulationVectors:
